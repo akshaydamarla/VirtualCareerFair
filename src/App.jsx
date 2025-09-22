@@ -3,8 +3,8 @@ import { Routes, Route, Link, useNavigate, useParams, Navigate } from "react-rou
 import "./App.css";
 
 // ----- Database Simulation -----
-const STORAGE_KEY = "fedf_ps43_db";
-const USER_KEY = "fedf_ps43_user";
+const STORAGE_KEY = "virtual_career_fair_db";
+const USER_KEY = "virtual_career_fair_user";
 
 const defaultDB = {
   fairs: [
@@ -45,7 +45,7 @@ function Header({ user, onLogout }) {
   return (
     <header>
       <div className="App">
-        <h1>FEDF-PS43 Virtual Career Fair</h1>
+        <h1>Virtual Career Fair</h1>
         <nav>
           <Link to="/">Home</Link> | <Link to="/fairs">Fairs</Link> |{" "}
           <Link to="/admin">Admin</Link>
@@ -128,14 +128,14 @@ function AuthPage({ setUser }) {
         <button type="submit">{mode === "login" ? "Login" : "Sign Up"}</button>
       </form>
       <p>
-  {mode === "login" ? "Don't have an account?" : "Already have one?"}{" "}
-  <span
-    className="auth-toggle"
-    onClick={() => setMode(mode === "login" ? "signup" : "login")}
-  >
-    {mode === "login" ? "Sign Up" : "Login"}
-  </span>
-</p>
+        {mode === "login" ? "Don't have an account?" : "Already have one?"}{" "}
+        <span
+          className="auth-toggle"
+          onClick={() => setMode(mode === "login" ? "signup" : "login")}
+        >
+          {mode === "login" ? "Sign Up" : "Login"}
+        </span>
+      </p>
     </div>
   );
 }
@@ -144,7 +144,7 @@ function AuthPage({ setUser }) {
 function Home() {
   return (
     <div className="App">
-      <h2>Welcome to the FEDF-PS43 Career Fair Platform</h2>
+      <h2>Welcome to the Virtual Career Fair Platform</h2>
       <p>Explore upcoming career fairs, visit company booths, and submit your resume.</p>
       <Link to="/fairs"><button>View Fairs</button></Link>
     </div>
