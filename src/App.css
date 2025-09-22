@@ -20,7 +20,7 @@ header:hover {
 }
 
 header h1 {
-  color: #fff; /* White color for header title */
+  color: #fff;
   margin-bottom: 10px;
   font-size: 2rem;
 }
@@ -51,7 +51,22 @@ nav a:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 20px rgba(0,0,0,0.2);
 }
+/* Auth toggle links (Signup/Login switch) */
+.auth-toggle {
+  margin-top: 15px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2563eb; /* bright blue highlight */
+  cursor: pointer;
+  display: inline-block;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
 
+.auth-toggle:hover {
+  color: #1d4ed8; /* darker blue on hover */
+  text-decoration: underline;
+  transform: scale(1.05); /* slight zoom effect */
+}
 /* Buttons */
 button {
   background-color: #2563eb;
@@ -96,6 +111,7 @@ textarea {
   padding: 10px;
   border-radius: 8px;
   margin-bottom: 10px;
+  scroll-behavior: smooth;
 }
 
 /* Headers for sections */
@@ -111,10 +127,6 @@ h1, h2, h3 {
   display: block;
 }
 
-/* Smooth scroll for chat */
-.chat-box {
-  scroll-behavior: smooth;
-}
 /* Booths grid */
 .fair-booths {
   display: flex;
@@ -124,8 +136,8 @@ h1, h2, h3 {
 }
 
 .fair-booths .card {
-  flex: 1 1 calc(33% - 20px); /* three cards per row on desktop */
-  min-width: 250px; /* ensures cards don’t shrink too small */
+  flex: 1 1 calc(33% - 20px);
+  min-width: 250px;
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
@@ -137,7 +149,7 @@ h1, h2, h3 {
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .fair-booths .card {
-    flex: 1 1 calc(50% - 15px); /* two cards per row on tablet */
+    flex: 1 1 calc(50% - 15px);
   }
 }
 
@@ -148,11 +160,53 @@ h1, h2, h3 {
   }
 
   .fair-booths .card {
-    flex: 1 1 100%; /* single column on mobile */
+    flex: 1 1 100%;
   }
 
   button {
     width: 100%;
     padding: 12px;
   }
+}
+
+/* ==== NEW: Auth Forms (Login / Signup) ==== */
+.auth-container {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 30px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffffff, #f0f9ff);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.auth-container h2 {
+  color: #1e3a8a;
+  margin-bottom: 20px;
+}
+
+.auth-container input {
+  margin-bottom: 15px;
+}
+
+.auth-container button {
+  width: 100%;
+  padding: 12px;
+}
+
+/* Auth toggle link */
+.auth-toggle {
+  margin-top: 15px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2563eb; /* bright blue highlight */
+  cursor: pointer;
+  display: inline-block;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.auth-toggle:hover {
+  color: #1d4ed8; /* darker blue on hover */
+  text-decoration: underline;
+  transform: scale(1.05); /* slight zoom effect */
 }

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { Routes, Route, Link, useNavigate, useParams } from "react-router-dom";
+import { Routes, Route, Link, useNavigate, useParams, Navigate } from "react-router-dom";
 import "./App.css";
 
-// Sample Database (localStorage simulation)
+// ----- Database Simulation -----
 const STORAGE_KEY = "fedf_ps43_db";
+const USER_KEY = "fedf_ps43_user";
+
 const defaultDB = {
   fairs: [
     {
@@ -18,7 +20,9 @@ const defaultDB = {
     },
   ],
   admins: [{ username: "admin", password: "admin123" }],
+  users: [],
 };
+
 function loadDB() {
   const data = localStorage.getItem(STORAGE_KEY);
   return data ? JSON.parse(data) : defaultDB;
@@ -26,37 +30,127 @@ function loadDB() {
 function saveDB(db) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 }
+function getCurrentUser() {
+  return JSON.parse(localStorage.getItem(USER_KEY));
+}
+function setCurrentUser(user) {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+function logoutUser() {
+  localStorage.removeItem(USER_KEY);
+}
 
-
-// ----- Components -----
-
-function Header() {
+// ----- Header -----
+function Header({ user, onLogout }) {
   return (
     <header>
       <div className="App">
         <h1>FEDF-PS43 Virtual Career Fair</h1>
         <nav>
-          <Link to="/">Home</Link> | <Link to="/fairs">Fairs</Link> | <Link to="/admin">Admin</Link>
+          <Link to="/">Home</Link> | <Link to="/fairs">Fairs</Link> |{" "}
+          <Link to="/admin">Admin</Link>
+          {user && (
+            <>
+              {" "}
+              | <span>Hi, {user.name}</span>{" "}
+              <button onClick={onLogout}>Logout</button>
+            </>
+          )}
         </nav>
       </div>
     </header>
   );
 }
 
-// Home
+// ---------- Authentication ----------
+function AuthPage({ setUser }) {
+  const [mode, setMode] = useState("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+
+  const db = loadDB();
+
+  const handleSignup = (e) => {
+    e.preventDefault();
+    if (db.users.find((u) => u.email === email)) {
+      alert("Email already registered, please login!");
+      setMode("login");
+      return;
+    }
+    const newUser = { name, email, password };
+    db.users.push(newUser);
+    saveDB(db);
+    alert("Signup successful! Please log in.");
+    setMode("login");
+  };
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    const found = db.users.find((u) => u.email === email && u.password === password);
+    if (found) {
+      setUser(found);
+      setCurrentUser(found);
+      navigate("/");
+    } else {
+      alert("Invalid credentials!");
+    }
+  };
+
+  return (
+    <div className="auth-container">
+      <h2>{mode === "login" ? "Login" : "Sign Up"}</h2>
+      <form onSubmit={mode === "login" ? handleLogin : handleSignup}>
+        {mode === "signup" && (
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        )}
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <button type="submit">{mode === "login" ? "Login" : "Sign Up"}</button>
+      </form>
+      <p>
+  {mode === "login" ? "Don't have an account?" : "Already have one?"}{" "}
+  <span
+    className="auth-toggle"
+    onClick={() => setMode(mode === "login" ? "signup" : "login")}
+  >
+    {mode === "login" ? "Sign Up" : "Login"}
+  </span>
+</p>
+    </div>
+  );
+}
+
+// ----- Pages -----
 function Home() {
   return (
     <div className="App">
       <h2>Welcome to the FEDF-PS43 Career Fair Platform</h2>
       <p>Explore upcoming career fairs, visit company booths, and submit your resume.</p>
-      <Link to="/fairs">
-        <button>View Fairs</button>
-      </Link>
+      <Link to="/fairs"><button>View Fairs</button></Link>
     </div>
   );
 }
 
-// Fairs List
 function Fairs() {
   const db = loadDB();
   return (
@@ -66,22 +160,18 @@ function Fairs() {
         <div className="card" key={fair.id}>
           <h3>{fair.title}</h3>
           <p>Date: {fair.date}</p>
-          <Link to={`/fair/${fair.id}`}>
-            <button>Visit Fair</button>
-          </Link>
+          <Link to={`/fair/${fair.id}`}><button>Visit Fair</button></Link>
         </div>
       ))}
     </div>
   );
 }
 
-// Fair page (booths)
 function FairPage() {
   const { fairId } = useParams();
   const db = loadDB();
   const fair = db.fairs.find((f) => f.id === fairId);
   if (!fair) return <p>Fair not found</p>;
-
   return (
     <div className="App">
       <h2>{fair.title} - Booths</h2>
@@ -90,20 +180,15 @@ function FairPage() {
           <div className="card" key={b.id}>
             <h3>{b.company}</h3>
             <p>{b.description}</p>
-            <Link to={`/booth/${fair.id}/${b.id}`}>
-              <button>Enter Booth</button>
-            </Link>
+            <Link to={`/booth/${fair.id}/${b.id}`}><button>Enter Booth</button></Link>
           </div>
         ))}
       </div>
-      <Link to={`/register/${fair.id}`}>
-        <button>Register for Fair</button>
-      </Link>
+      <Link to={`/register/${fair.id}`}><button>Register for Fair</button></Link>
     </div>
   );
 }
 
-// Booth page (chat + resume)
 function BoothPage() {
   const { fairId, boothId } = useParams();
   const [db, setDb] = useState(loadDB());
@@ -121,9 +206,7 @@ function BoothPage() {
     setMsg("");
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") sendMessage();
-  };
+  const handleKeyPress = (e) => { if (e.key === "Enter") sendMessage(); };
 
   return (
     <div className="App">
@@ -132,9 +215,7 @@ function BoothPage() {
 
       <h3>Live Chat</h3>
       <div className="card" style={{ maxHeight: "200px", overflowY: "scroll" }}>
-        {booth.messages.map((m, i) => (
-          <p key={i}>{m}</p>
-        ))}
+        {booth.messages.map((m, i) => (<p key={i}>{m}</p>))}
       </div>
       <input
         type="text"
@@ -151,7 +232,6 @@ function BoothPage() {
   );
 }
 
-// Registration page
 function Registration() {
   const { fairId } = useParams();
   const [name, setName] = useState("");
@@ -169,73 +249,43 @@ function Registration() {
     navigate(`/fair/${fairId}`);
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") handleRegister();
-  };
+  const handleKeyPress = (e) => { if (e.key === "Enter") handleRegister(); };
 
   return (
     <div className="App">
       <h2>Register for Fair</h2>
-      <input
-        placeholder="Full Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={handleKeyPress}
-      />
-      <input
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        onKeyDown={handleKeyPress}
-      />
+      <input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={handleKeyPress}/>
+      <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={handleKeyPress}/>
       <button onClick={handleRegister}>Register</button>
     </div>
   );
 }
 
-// Admin login
+// ----- Admin -----
 function AdminLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const db = loadDB();
 
-  // Submit handler
   const login = () => {
-    const admin = db.admins.find(
-      (a) => a.username === username && a.password === password
-    );
+    const admin = db.admins.find((a) => a.username === username && a.password === password);
     if (admin) navigate("/admin/dashboard");
     else alert("Invalid Admin ID or Password");
   };
 
-  // Handle Enter key
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") login();
-  };
+  const handleKeyPress = (e) => { if (e.key === "Enter") login(); };
 
   return (
     <div className="App">
       <h2>Admin Login</h2>
-      <input
-        placeholder="Admin ID"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        onKeyDown={handleKeyPress}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        onKeyDown={handleKeyPress}
-      />
+      <input placeholder="Admin ID" value={username} onChange={(e) => setUsername(e.target.value)} onKeyDown={handleKeyPress}/>
+      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handleKeyPress}/>
       <button onClick={login}>Login</button>
     </div>
   );
 }
 
-// Admin dashboard
 function AdminDashboard() {
   const [db, setDb] = useState(loadDB());
   const [title, setTitle] = useState("");
@@ -270,17 +320,22 @@ function AdminDashboard() {
   );
 }
 
-// Main App
+// ----- Main App -----
 export default function App() {
+  const [user, setUser] = useState(getCurrentUser());
+
+  const handleLogout = () => { logoutUser(); setUser(null); };
+
   return (
     <div>
-      <Header />
+      <Header user={user} onLogout={handleLogout} />
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/fairs" element={<Fairs />} />
-        <Route path="/fair/:fairId" element={<FairPage />} />
-        <Route path="/booth/:fairId/:boothId" element={<BoothPage />} />
-        <Route path="/register/:fairId" element={<Registration />} />
+        <Route path="/auth" element={user ? <Navigate to="/" /> : <AuthPage setUser={setUser} />} />
+        <Route path="/" element={user ? <Home /> : <Navigate to="/auth" />} />
+        <Route path="/fairs" element={user ? <Fairs /> : <Navigate to="/auth" />} />
+        <Route path="/fair/:fairId" element={user ? <FairPage /> : <Navigate to="/auth" />} />
+        <Route path="/booth/:fairId/:boothId" element={user ? <BoothPage /> : <Navigate to="/auth" />} />
+        <Route path="/register/:fairId" element={user ? <Registration /> : <Navigate to="/auth" />} />
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>
