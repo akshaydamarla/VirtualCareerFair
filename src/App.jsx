@@ -1,44 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Routes, Route, Link, useNavigate, useParams, Navigate } from "react-router-dom";
 import "./App.css";
-
-// ----- Database Simulation -----
-const STORAGE_KEY = "virtual_career_fair_db";
-const USER_KEY = "virtual_career_fair_user";
-
-const defaultDB = {
-  fairs: [
-    {
-      id: "fair1",
-      title: "Tech Career Fair",
-      date: "2025-10-15",
-      booths: [
-        { id: "b1", company: "Acme Corp", description: "Frontend & Backend roles", messages: [] },
-        { id: "b2", company: "Globex Inc.", description: "Internships & SDE roles", messages: [] },
-      ],
-      registrations: [],
-    },
-  ],
-  admins: [{ username: "admin", password: "admin123" }],
-  users: [],
-};
-
-function loadDB() {
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : defaultDB;
-}
-function saveDB(db) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-}
-function getCurrentUser() {
-  return JSON.parse(localStorage.getItem(USER_KEY));
-}
-function setCurrentUser(user) {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-}
-function logoutUser() {
-  localStorage.removeItem(USER_KEY);
-}
+import { callApi } from "./lib";
 
 // ----- Header -----
 function Header({ user, onLogout }) {
@@ -70,32 +33,25 @@ function AuthPage({ setUser }) {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const db = loadDB();
-
   const handleSignup = (e) => {
     e.preventDefault();
-    if (db.users.find((u) => u.email === email)) {
-      alert("Email already registered, please login!");
+    callApi("POST", "signup", { name, email, password }, (res) => {
+      alert(res);
       setMode("login");
-      return;
-    }
-    const newUser = { name, email, password };
-    db.users.push(newUser);
-    saveDB(db);
-    alert("Signup successful! Please log in.");
-    setMode("login");
+    });
   };
 
   const handleLogin = (e) => {
     e.preventDefault();
-    const found = db.users.find((u) => u.email === email && u.password === password);
-    if (found) {
-      setUser(found);
-      setCurrentUser(found);
-      navigate("/");
-    } else {
-      alert("Invalid credentials!");
-    }
+    callApi("POST", "login", { email, password }, (res) => {
+      if (res.email) {
+        setUser(res);
+        localStorage.setItem("virtual_career_fair_user", JSON.stringify(res));
+        navigate("/");
+      } else {
+        alert("Invalid credentials");
+      }
+    });
   };
 
   return (
@@ -152,15 +108,20 @@ function Home() {
 }
 
 function Fairs() {
-  const db = loadDB();
+  const [fairs, setFairs] = useState([]);
+
+  useEffect(() => {
+    callApi("GET", "fairs", null, (res) => setFairs(res));
+  }, []);
+
   return (
     <div className="App">
       <h2>Upcoming Career Fairs</h2>
-      {db.fairs.map((fair) => (
-        <div className="card" key={fair.id}>
+      {fairs.map((fair) => (
+        <div className="card" key={fair._id}>
           <h3>{fair.title}</h3>
           <p>Date: {fair.date}</p>
-          <Link to={`/fair/${fair.id}`}><button>Visit Fair</button></Link>
+          <Link to={`/fair/${fair._id}`}><button>Visit Fair</button></Link>
         </div>
       ))}
     </div>
@@ -169,53 +130,68 @@ function Fairs() {
 
 function FairPage() {
   const { fairId } = useParams();
-  const db = loadDB();
-  const fair = db.fairs.find((f) => f.id === fairId);
-  if (!fair) return <p>Fair not found</p>;
+  const [fair, setFair] = useState(null);
+
+  useEffect(() => {
+    callApi("GET", "fairs", null, (res) => {
+      const found = res.find((f) => f._id === fairId);
+      setFair(found);
+    });
+  }, [fairId]);
+
+  if (!fair) return <p>Loading...</p>;
+
   return (
     <div className="App">
       <h2>{fair.title} - Booths</h2>
       <div className="fair-booths">
-        {fair.booths.map((b) => (
+        {fair.booths?.map((b) => (
           <div className="card" key={b.id}>
             <h3>{b.company}</h3>
             <p>{b.description}</p>
-            <Link to={`/booth/${fair.id}/${b.id}`}><button>Enter Booth</button></Link>
+            <Link to={`/booth/${fair._id}/${b.id}`}><button>Enter Booth</button></Link>
           </div>
         ))}
       </div>
-      <Link to={`/register/${fair.id}`}><button>Register for Fair</button></Link>
+      <Link to={`/register/${fair._id}`}><button>Register for Fair</button></Link>
     </div>
   );
 }
 
 function BoothPage() {
   const { fairId, boothId } = useParams();
-  const [db, setDb] = useState(loadDB());
+  const [fair, setFair] = useState(null);
   const [msg, setMsg] = useState("");
 
-  const fair = db.fairs.find((f) => f.id === fairId);
-  const booth = fair?.booths.find((b) => b.id === boothId);
-  if (!booth) return <p>Booth not found</p>;
+  useEffect(() => {
+    callApi("GET", "fairs", null, (res) => {
+      const found = res.find((f) => f._id === fairId);
+      setFair(found);
+    });
+  }, [fairId]);
 
   const sendMessage = () => {
     if (!msg) return;
-    booth.messages.push(msg);
-    setDb({ ...db });
-    saveDB(db);
-    setMsg("");
+    callApi("POST", `booth/${fairId}/${boothId}/message`, { message: msg }, () => {
+      alert("Message Sent");
+      setMsg("");
+    });
   };
 
   const handleKeyPress = (e) => { if (e.key === "Enter") sendMessage(); };
+
+  if (!fair) return <p>Loading...</p>;
+
+  const booth = fair.booths?.find((b) => b.id === boothId);
+  if (!booth) return <p>Booth not found</p>;
 
   return (
     <div className="App">
       <h2>{booth.company} Booth</h2>
       <p>{booth.description}</p>
-
       <h3>Live Chat</h3>
       <div className="card" style={{ maxHeight: "200px", overflowY: "scroll" }}>
-        {booth.messages.map((m, i) => (<p key={i}>{m}</p>))}
+        {booth.messages?.map((m, i) => (<p key={i}>{m}</p>))}
       </div>
       <input
         type="text"
@@ -225,9 +201,6 @@ function BoothPage() {
         onKeyDown={handleKeyPress}
       />
       <button onClick={sendMessage}>Send</button>
-
-      <h3>Upload Resume</h3>
-      <input type="file" />
     </div>
   );
 }
@@ -236,17 +209,14 @@ function Registration() {
   const { fairId } = useParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [db, setDb] = useState(loadDB());
   const navigate = useNavigate();
 
   const handleRegister = () => {
     if (!name || !email) return alert("Please fill all fields");
-    const fair = db.fairs.find((f) => f.id === fairId);
-    fair.registrations.push({ name, email });
-    setDb({ ...db });
-    saveDB(db);
-    alert("Registered successfully!");
-    navigate(`/fair/${fairId}`);
+    callApi("POST", `register/${fairId}`, { name, email }, (res) => {
+      alert(res);
+      navigate(`/fair/${fairId}`);
+    });
   };
 
   const handleKeyPress = (e) => { if (e.key === "Enter") handleRegister(); };
@@ -266,11 +236,9 @@ function AdminLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
-  const db = loadDB();
 
   const login = () => {
-    const admin = db.admins.find((a) => a.username === username && a.password === password);
-    if (admin) navigate("/admin/dashboard");
+    if (username === "admin" && password === "admin123") navigate("/admin/dashboard");
     else alert("Invalid Admin ID or Password");
   };
 
@@ -287,17 +255,20 @@ function AdminLogin() {
 }
 
 function AdminDashboard() {
-  const [db, setDb] = useState(loadDB());
+  const [fairs, setFairs] = useState([]);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
 
+  useEffect(() => {
+    callApi("GET", "fairs", null, (res) => setFairs(res));
+  }, []);
+
   const addFair = () => {
-    const newFair = { id: `fair${Date.now()}`, title, date, booths: [], registrations: [] };
-    db.fairs.push(newFair);
-    setDb({ ...db });
-    saveDB(db);
-    setTitle("");
-    setDate("");
+    callApi("POST", "fairs", { title, date, booths: [], registrations: [] }, () => {
+      setTitle("");
+      setDate("");
+      callApi("GET", "fairs", null, (res) => setFairs(res));
+    });
   };
 
   return (
@@ -309,11 +280,11 @@ function AdminDashboard() {
       <button onClick={addFair}>Add Fair</button>
 
       <h3>Existing Fairs</h3>
-      {db.fairs.map((f) => (
-        <div className="card" key={f.id}>
+      {fairs.map((f) => (
+        <div className="card" key={f._id}>
           <h4>{f.title}</h4>
           <p>Date: {f.date}</p>
-          <p>Registrations: {f.registrations.length}</p>
+          <p>Registrations: {f.registrations?.length || 0}</p>
         </div>
       ))}
     </div>
@@ -322,9 +293,15 @@ function AdminDashboard() {
 
 // ----- Main App -----
 export default function App() {
-  const [user, setUser] = useState(getCurrentUser());
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("virtual_career_fair_user");
+    return saved ? JSON.parse(saved) : null;
+  });
 
-  const handleLogout = () => { logoutUser(); setUser(null); };
+  const handleLogout = () => {
+    localStorage.removeItem("virtual_career_fair_user");
+    setUser(null);
+  };
 
   return (
     <div>
